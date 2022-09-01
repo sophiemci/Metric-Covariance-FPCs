@@ -7,7 +7,7 @@ import os
 import datetime
 import itertools
 import time
-from dataprep import all_laplacians
+from dataprep import all_laplacians, smaller_laplacians
 from metrics import frobenius, procrustes, square_root
 
 def day_to_day(A,B,metric):
@@ -22,13 +22,13 @@ def day_to_day(A,B,metric):
     return np.fromiter(applied,float).reshape(24,24)
 
 ## Get the year by year matrix
-def c_hat_years(year1, year2, metric):
-    keys1 = filter(lambda x: x.year == year1, all_laplacians.keys())
-    keys1b = filter(lambda x: x.year == year1, all_laplacians.keys())
-    keys2 = filter(lambda x: x.year == year2, all_laplacians.keys())
-    keys2b = filter(lambda x: x.year == year2, all_laplacians.keys())
-    dict1 = dict(zip(keys1, map(lambda x: all_laplacians[x],keys1b)))
-    dict2 = dict(zip(keys2, map(lambda x: all_laplacians[x],keys2b)))
+def c_hat_years(year1, year2, metric, laplacians):
+    keys1 = filter(lambda x: x.year == year1, laplacians.keys())
+    keys1b = filter(lambda x: x.year == year1, laplacians.keys())
+    keys2 = filter(lambda x: x.year == year2, laplacians.keys())
+    keys2b = filter(lambda x: x.year == year2, laplacians.keys())
+    dict1 = dict(zip(keys1, map(lambda x: laplacians[x],keys1b)))
+    dict2 = dict(zip(keys2, map(lambda x: laplacians[x],keys2b)))
     print(f"starting for {year1} and {year2}")
     ## apply the itertools map etc to the pairwise terms 
     pairs = itertools.product(dict1.values(), dict2.values(), repeat=1)
@@ -42,16 +42,19 @@ def c_hat_years(year1, year2, metric):
     chat = D1 + D1.transpose() - (D3 * len(dict2.keys()) + D4 * len(dict1.keys()))
     with open(f'autocovs-pairs/chat-{metric.__name__}-{year1}-{year2}.pkl','wb') as f:
         pickle.dump(chat,f)
-
+    
     print(f'success for {year1} and {year2}!')
+    
     return chat
 
 if __name__ == "__main__":
-    metric = frobenius
-    years = np.arange(2018,2023,1)
+    #edit these inputs
+    metric = procrustes
+    laplacians = smaller_laplacians
 
+    years = np.arange(2018,2023,1)
     pairs = list(itertools.combinations(years,2)) + [(year,year) for year in years]
-    args = [(x[0],x[1],metric) for x in pairs]
+    args = [(x[0],x[1],metric,laplacians) for x in pairs]
     print('starting multiprocess')
     
     pool = multiprocessing.Pool()

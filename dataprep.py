@@ -5,7 +5,7 @@ import datetime
 with open('daily_networks_hourly_2018-22.pkl','rb') as f:
     data = pickle.load(f)
     
-def laplacians(X_day):
+def get_laplacians(X_day):
     '''
     For a day of data, 
         - take the symmetric part of the adjacency matrix
@@ -20,10 +20,13 @@ def laplacians(X_day):
     
 def lap(X):
     D = np.sum(X,axis=1)
-    #44 is the number of stations we consider for the Frobenius metric 
-    L = np.zeros((44,44))
+    n = len(D)
+    L = np.zeros((n,n))
     np.fill_diagonal(L,D)
     return L - X
 
 #all_laplacians contains the hourly laplacians for each day
-all_laplacians = dict(zip(data.keys(), map(laplacians, data.values())))
+all_laplacians = dict(zip(data.keys(), map(get_laplacians, data.values())))
+
+#the 10 x 10 laplacians we look at for the Procrustes and Square Root metric
+smaller_laplacians = dict(zip(data.keys(), map(lambda x: get_laplacians(x[:,:10,:10]), data.values())))
