@@ -4,6 +4,13 @@ import datetime
 
 with open('daily_networks_hourly_2018-22.pkl','rb') as f:
     data = pickle.load(f)
+
+def get_adjacency(X_day):
+    X_day = np.vectorize(lambda x: 0.5*(x + np.transpose(x)),
+                       signature= '(n,n)->(n,n)')(X_day)
+    X_scaled = X_day/np.max(X_day)
+    return X_scaled
+
     
 def get_laplacians(X_day):
     '''
@@ -26,7 +33,13 @@ def lap(X):
     return L - X
 
 #all_laplacians contains the hourly laplacians for each day
+all_adjacency = dict(zip(data.keys(), map(get_adjacency, data.values())))
+all_adjacency['name'] = "all_adj"
+
+#all_laplacians contains the hourly laplacians for each day
 all_laplacians = dict(zip(data.keys(), map(get_laplacians, data.values())))
+all_laplacians['name'] = "all_lap"
 
 #the 10 x 10 laplacians we look at for the Procrustes and Square Root metric
 smaller_laplacians = dict(zip(data.keys(), map(lambda x: get_laplacians(x[:,:10,:10]), data.values())))
+smaller_laplacians['name'] = "small_lap"

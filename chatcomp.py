@@ -7,7 +7,7 @@ import os
 import datetime
 import itertools
 import time
-from dataprep import all_laplacians, smaller_laplacians
+from dataprep import all_adjacency, all_laplacians, smaller_laplacians
 from metrics import frobenius, procrustes, square_root
 
 def day_to_day(A,B,metric):
@@ -44,24 +44,56 @@ def c_hat_years(year1, year2, metric, laplacians):
         pickle.dump(chat,f)
     
     print(f'success for {year1} and {year2}!')
-    
     return chat
+
+def c_hat_fast(yr, metric, laplacians):
+    name = laplacians.pop("name")
+    keys1 = filter(lambda x: x.year == yr, laplacians.keys())
+    keys1b = filter(lambda x: x.year == yr, laplacians.keys())
+    dict1 = dict(zip(keys1, map(lambda x: laplacians[x],keys1b)))
+    print(f"starting for {yr}")
+    ## apply the itertools map etc to the pairwise terms 
+
+    pairs = itertools.product(dict1.values(), dict1.values(), repeat=1)
+    C_hat = np.zeros((24,24))
+    
+    pool = multiprocessing.Pool()
+    D1_temp = pool.starmap(day_to_day,map(lambda x: (x[0],x[1],metric), pairs))
+    D1 = np.sum(D1_temp, axis = 0)
+
+    D3_temp = pool.starmap(day_to_day,map(lambda x: (x,x,metric), dict1.values()))
+    D3 = np.sum(D3_temp, axis = 0)
+    
+    #D1.transpose() is D2, D3 = D4 
+    chat = D1 + D1.transpose() - 2 * D3 * len(dict1.keys())
+    with open(f'autocovs-pairs/chat-{metric.__name__}-{yr}-{name}.pkl','wb') as f:
+        pickle.dump(chat,f)
+    
+    print(f'success for {yr}!')
+    return chat
+
 
 if __name__ == "__main__":
     #edit these inputs
-    metric = procrustes
-    laplacians = smaller_laplacians
+    metric = frobenius
+    laplacians = all_adjacency
+    approach = "fast"   #"fast" or "yearly"
+    years = np.arange(2019,2020,1)
 
-    years = np.arange(2018,2023,1)
-    pairs = list(itertools.combinations(years,2)) + [(year,year) for year in years]
-    args = [(x[0],x[1],metric,laplacians) for x in pairs]
-    print('starting multiprocess')
-    
-    pool = multiprocessing.Pool()
-    results = pool.starmap(c_hat_years,args)
-    
-    all = np.sum(results[0:-len(years)], axis = 0)*2 + np.sum(results[-len(years):], axis = 0)
-    all_s = all / (4 * len(all_laplacians) * (len(all_laplacians)-1))
-    with open(f'autocovs-pairs/chat-{metric.__name__}-all.pkl','wb') as f:
-        pickle.dump(all_s, f)
-    
+    if approach == "fast":
+        #Compute year only c-hats
+        for year in years:
+            c_hat_fast(year, metric, laplacians)
+
+    else:
+        pairs = list(itertools.combinations(years,2)) + [(year,year) for year in years]
+        args = [(x[0],x[1],metric,laplacians) for x in pairs]
+        print('starting multiprocess')
+        
+        pool = multiprocessing.Pool()
+        results = pool.starmap(c_hat_years,args)
+        
+        all = np.sum(results[0:-len(years)], axis = 0)*2 + np.sum(results[-len(years):], axis = 0)
+        all_s = all / (4 * len(all_laplacians) * (len(all_laplacians)-1))
+        with open(f'autocovs-pairs/chat-{metric.__name__}-{laplacians["name"]}-all.pkl','wb') as f:
+            pickle.dump(all_s, f)
