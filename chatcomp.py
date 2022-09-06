@@ -7,7 +7,7 @@ import os
 import datetime
 import itertools
 import time
-from dataprep import all_adjacency, all_laplacians, smaller_laplacians
+from dataprep import all_adjacency, all_laplacians, smaller_laplacians, smaller_adjacency
 from metrics import frobenius, procrustes, square_root
 
 def day_to_day(A,B,metric):
@@ -67,7 +67,7 @@ def c_hat_fast(yr, metric, laplacians):
     #D1.transpose() is D2, D3 = D4 
     chat = D1 + D1.transpose() - 2 * D3 * len(dict1.keys())
     with open(f'autocovs-pairs/chat-{metric.__name__}-{yr}-{name}.pkl','wb') as f:
-        pickle.dump(chat,f)
+        pickle.dump(chat/(4 * 364 * 365),f)
     
     print(f'success for {yr}!')
     return chat
@@ -76,7 +76,7 @@ def c_hat_fast(yr, metric, laplacians):
 if __name__ == "__main__":
     #edit these inputs
     metric = frobenius
-    laplacians = all_adjacency
+    laplacians = smaller_laplacians
     approach = "fast"   #"fast" or "yearly"
     years = np.arange(2019,2020,1)
 

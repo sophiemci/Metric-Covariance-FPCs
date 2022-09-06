@@ -119,10 +119,10 @@ def sqrt(X):
     sqX = np.dot(v,np.dot(np.diag(np.sqrt(d)),v.T))
     return sqX
 
-def sqrt_mean(data):
+def sqrt_mean(data_dict):
     p = 10 #default for procrustes mean 
-    data = np.zeros((len(data.keys()), 24, p, p))
-    for k, item in enumerate(data.values()):
+    data = np.zeros((len(data_dict.keys()), 24, p, p))
+    for k, item in enumerate(data_dict.values()):
         data[k,:,:,:] = item
 
     #data = np.array(list(data.values()))
