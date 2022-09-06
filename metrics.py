@@ -12,6 +12,11 @@ from numpy.linalg import svd
 from numpy.linalg import norm
 import scipy.linalg as la
 
+'''
+The three metrics used in the analysis. 
+Caution that the functions return d^2
+'''
+
 def frobenius(X,Y):
     return norm(X-Y)**2
 
