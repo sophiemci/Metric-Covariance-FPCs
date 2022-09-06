@@ -51,7 +51,7 @@ def smoother(c_hat, samples = 24, s=0):
     c_hat_new = spline(xnew[:,0], ynew[0,:])
     return c_hat_new
 
-def eigenfunctions(c_hat, K, metric, space = None):
+def eigenfunctions(c_hat, K, metric, space = None, plot = True):
     '''
     Computes the first K eigenfunctions of C_hat by constrained maximisation
     Constraints - evecs have 2-norm 1 and are orthogonal
@@ -97,20 +97,71 @@ def eigenfunctions(c_hat, K, metric, space = None):
         print(next_opt.status, next_opt.message)
         
     #plotting
-    perc_exp = 100*lambdas/np.sum(lambdas)
-    J = len(opts[0])
-    for i in range((K+1)//4):
-        plt.clf()
-        for j in range(4):
-            plt.plot(opts[i*4+j],label=f'ef {i*4+j+1}, var_expl= {np.round(100*perc_exp[i*4+j],2)} %')
-        plt.legend(loc='best')
-        plt.title(f'eigenfunctions {i*4+1} to {i*4+4} of C(s,t)\n fitted by maximisation, 5 observations per hour\n {metric.__name__} metric, {space}')
-        plt.xlabel('t')
-        plt.xticks(np.linspace(0,J+1,7),np.linspace(0,24,7))
-        plt.show()
+    if plot:
+        plt.rcParams["figure.figsize"] = (6,6)
+        perc_exp = 100*lambdas/np.sum(lambdas)
+        J = len(opts[0])
+        for i in range((K+1)//4):
+            plt.clf()
+            for j in range(4):
+                plt.plot(opts[i*4+j],label=f'ef {i*4+j+1}, var_expl= {np.round(100*perc_exp[i*4+j],2)} %')
+            plt.legend(loc='best')
+            plt.title(f'eigenfunctions {i*4+1} to {i*4+4} of C(s,t)\n fitted by maximisation, p=10, \n {metric.__name__} metric, {space}')
+            plt.xlabel('t')
+            plt.xticks(np.linspace(0,J+1,7),np.linspace(0,24,7))
+            plt.show()
         
     return lambdas, opts
+  
+def sqrt(X):
+    d,v = la.eigh(X)
+    d = np.maximum(d,0)
+    sqX = np.dot(v,np.dot(np.diag(np.sqrt(d)),v.T))
+    return sqX
 
+def sqrt_mean(data):
+    p = 10 #default for procrustes mean 
+    data = np.zeros((len(data.keys()), 24, p, p))
+    for k, item in enumerate(data.values()):
+        data[k,:,:,:] = item
 
+    #data = np.array(list(data.values()))
+    vsqrt = np.vectorize(sqrt,signature='(n,n)->(n,n)')    
+    laps_rt = vsqrt(data)
+    mean_sqrt = np.vectorize(lambda x: np.matmul(x,x), signature='(n,n)->(n,n)')(np.mean(laps_rt,axis=0))
+    return mean_sqrt
 
+def procrustes_mean(data_dict):
+    p = 10 #default for procrustes mean 
+    data = np.zeros((len(data_dict.keys()), 24, p, p))
+    for k, item in enumerate(data_dict.values()):
+        data[k,:,:,:] = item
+
+    data = np.swapaxes(data,0,1)
+    sqrt_all = np.vectorize(sqrt, signature='(n,n)->(n,n)')
+    k,n,p,_ = np.shape(data)
+    means = np.zeros((24,p,p))
+    square = lambda x: np.matmul(x, x.T)
+    
+    for i in range(24):
+        daily_data = data[i]
+        L0s = sqrt_all(daily_data)
+        L_hat_new = np.mean(L0s, axis=0)
+        C_hat_new = square(L_hat_new)
+        C_hat = C_hat_new - 1
+
+        while norm(C_hat_new - C_hat) > 1e-8:
+            vec = np.vectorize(lambda x :np.matmul(x,la.orthogonal_procrustes(x,L_hat_new)[0]),
+                        signature='(n,n)->(n,n)')
+            #compute L_{i+1} = RL_{i}, take their mean
+            Lsnew = vec(L0s)
+            L_hat = L_hat_new
+            L_hat_new = np.mean(Lsnew,axis=0)
+            
+            C_hat = C_hat_new
+            C_hat_new = square(L_hat_new)
+
+        means[i,:,:] = C_hat_new
+    return means
+    
 
