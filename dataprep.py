@@ -32,9 +32,11 @@ def lap(X):
     np.fill_diagonal(L,D)
     return L - X
 
-#all_laplacians contains the hourly laplacians for each day
 all_adjacency = dict(zip(data.keys(), map(get_adjacency, data.values())))
 all_adjacency['name'] = "all_adj"
+
+smaller_adjacency = dict(zip(data.keys(), map(get_adjacency, data.values())))
+smaller_adjacency['name'] = "small_adj"
 
 #all_laplacians contains the hourly laplacians for each day
 all_laplacians = dict(zip(data.keys(), map(get_laplacians, data.values())))
